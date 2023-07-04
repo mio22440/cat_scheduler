@@ -14,87 +14,204 @@
  * </table>
  */
 #include "cat_scheduler.h"
+#include "cat_error.h"
+
+#ifndef _WIN32
+IMPORT_SECTION(cat_scheduler)
+#else
+const cat_scheduler_t cat_scheduler_start SECTION("cat_scheduler_sec_start");
+const cat_scheduler_t cat_scheduler_end   SECTION("cat_scheduler_sec_end");
+#endif
 
 
-void cat_scheduler_register(cat_scheduler_t *scheduler)
+#ifndef _WIN32
+/* 遍历调度器列表 */
+#define CAT_FOREACH_SCHEDULER(_temp) \
+    for(_temp =  (cat_scheduler_t*)SECTION_START(cat_scheduler); \
+        _temp != (cat_scheduler_t*)SECTION_END(cat_scheduler); \
+        _temp ++)
+#else
+#define CAT_FOREACH_SCHEDULER(_temp) \
+    for(_temp =  (cat_scheduler_t*)(&cat_scheduler_start)+1; \
+        _temp != (cat_scheduler_t*)(&cat_scheduler_end); \
+        _temp ++)
+#endif
+
+void print_scheduler(void)
 {
-    (void)scheduler;
-    printf("%s\n", __func__);
+    cat_scheduler_t *p = NULL;
+    cat_uint32_t i = 0;
+
+    CAT_FOREACH_SCHEDULER(p)
+    {
+        printf("%d: name=%s, prio=%u\r\n", i, p->scheduler_name, p->scheduler_prio);
+        i++;
+    }
 }
 
-cat_scheduler_t *cat_scheduler_get_by_strategy(cat_uint8_t strategy)
+/**
+ * @brief 根据策略获取调度器
+ * 
+ * @param  strategy         调度策略
+ * @return cat_scheduler_t* 调度器结构体指针
+ */
+static inline cat_scheduler_t *cat_scheduler_get_by_strategy(cat_uint8_t strategy)
 {
-    (void)strategy;
+    cat_scheduler_t *ret = NULL, *p = NULL;
 
-    printf("%s\n", __func__);
+    CAT_FOREACH_SCHEDULER(p)
+    {
+        if(strategy == p->strategy)
+        {
+            ret = p;
+            //break;
+        }
+    }
 
-    return NULL;
+    return ret;
 }
 
 
 void cat_scheduler_init_all_scheduler(void)
 {
-    printf("%s\n", __func__);
-}
+    cat_scheduler_t *p = NULL;
 
+    CAT_FOREACH_SCHEDULER(p)
+    {
+        CAT_ASSERT(NULL != p);
+
+        if(NULL != p->scheduler_init)
+        {
+            p->scheduler_init();
+        }
+    }
+}
 void cat_scheduler_create_task_static(cat_uint8_t strategy, void *task_config)
 {
-    (void)strategy;
-    (void)task_config;
+    cat_scheduler_t *scheduler = cat_scheduler_get_by_strategy(strategy);
 
-    printf("%s\n", __func__);
+    CAT_ASSERT(NULL != scheduler);
+    CAT_ASSERT(NULL != scheduler->task_create_static);
+
+    scheduler->task_create_static(task_config);
 }
 
 void cat_scheduler_deal_in_tick(void)
 {
-    printf("%s\n", __func__);
+    cat_scheduler_t *p = NULL;
+
+    CAT_FOREACH_SCHEDULER(p)
+    {
+        CAT_ASSERT(NULL != p);
+
+        if(NULL != p->deal_in_tick)
+        {
+            p->deal_in_tick();
+        }
+    }
 }
 
 
 void cat_scheduler_schedule(void)
 {
-    printf("%s\n", __func__);
+    cat_scheduler_t *p = NULL, *highest_prio_scheduler = NULL;
+    cat_uint8_t highest_prio = 0xff, has_rdy = 0;
+
+    CAT_FOREACH_SCHEDULER(p)
+    {
+        CAT_ASSERT(NULL != p);
+        CAT_ASSERT(NULL != p->has_task_rdy);
+
+        has_rdy = p->has_task_rdy();
+
+        if(
+            (p->scheduler_prio < highest_prio) &&
+            (0 != has_rdy)
+        )
+        {
+            highest_prio_scheduler = p;
+        }
+    }
+
+    CAT_ASSERT(NULL != highest_prio_scheduler);
+    CAT_ASSERT(NULL != highest_prio_scheduler->schedule);
+
+    highest_prio_scheduler->schedule();
+
+    /* 不会到达这里 */
+    while(1);
 }
 
 
 void cat_scheduler_task_rdy(struct _cat_task_t *task)
 {
-    (void)task;
-    
-    printf("%s\n", __func__);
+    CAT_ASSERT(task);
+
+    cat_scheduler_t *scheduler = cat_scheduler_get_by_strategy(task->sched_strategy);
+
+    CAT_ASSERT(NULL != scheduler);
+    CAT_ASSERT(NULL != scheduler->task_rdy);
+
+    scheduler->task_rdy(task);
 }
 
 void cat_scheduler_task_unrdy(struct _cat_task_t *task)
 {
-    (void)task;
+    CAT_ASSERT(task);
 
-    printf("%s\n", __func__);
+    cat_scheduler_t *scheduler = cat_scheduler_get_by_strategy(task->sched_strategy);
+
+    CAT_ASSERT(NULL != scheduler);
+    CAT_ASSERT(NULL != scheduler->task_unrdy);
+
+    scheduler->task_unrdy(task);
 }
 
-void cat_scheduler_task_delay(cat_uint32_t tick)
+void cat_scheduler_task_delay(struct _cat_task_t *task, cat_uint32_t tick)
 {
-    (void)tick;
+    CAT_ASSERT(task);
 
-    printf("%s\n", __func__);
+    cat_scheduler_t *scheduler = cat_scheduler_get_by_strategy(task->sched_strategy);
+
+    CAT_ASSERT(NULL != scheduler);
+    CAT_ASSERT(NULL != scheduler->task_delay);
+
+    /* 不要求 tick 大于零了，这样可以通过 delay(0) 来放弃cpu */
+    scheduler->task_delay(task, tick);
 }
 
 void cat_scheduler_task_delay_wakeup(struct _cat_task_t *task)
 {
-    (void)task;
+    CAT_ASSERT(task);
 
-    printf("%s\n", __func__);
+    cat_scheduler_t *scheduler = cat_scheduler_get_by_strategy(task->sched_strategy);
+
+    CAT_ASSERT(NULL != scheduler);
+    CAT_ASSERT(NULL != scheduler->task_delay_wakeup);
+
+    scheduler->task_delay_wakeup(task);
 }
 
 void cat_scheduler_task_suspend(struct _cat_task_t *task)
 {
-    (void)task;
+    CAT_ASSERT(task);
 
-    printf("%s\n", __func__);
+    cat_scheduler_t *scheduler = cat_scheduler_get_by_strategy(task->sched_strategy);
+
+    CAT_ASSERT(NULL != scheduler);
+    CAT_ASSERT(NULL != scheduler->task_suspend);
+
+    scheduler->task_suspend(task);
 }
 
 void cat_scheduler_task_suspend_wakeup(struct _cat_task_t *task)
 {
-    (void)task;
-    
-    printf("%s\n", __func__);
+    CAT_ASSERT(task);
+
+    cat_scheduler_t *scheduler = cat_scheduler_get_by_strategy(task->sched_strategy);
+
+    CAT_ASSERT(NULL != scheduler);
+    CAT_ASSERT(NULL != scheduler->task_suspend_wakeup);
+
+    scheduler->task_suspend_wakeup(task);
 }

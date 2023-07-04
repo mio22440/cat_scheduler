@@ -19,8 +19,10 @@ else
 
 endif
 
-CLINK_FLAGS += -g
-CFLAGS		+= -g -O1
+OUT_MAP = scheduler.map
+
+CLINK_FLAGS += -g -ffunction-sections -fdata-sections -Wl,-T "link.ld"
+CFLAGS		+= -g -ffunction-sections -fdata-sections -O0
 
 #不需要处理的目录路径
 SRC_DIR = src
@@ -32,6 +34,8 @@ BIN_DIR_ORIG = $(OUT_DIR)/bin
 #要编译的文件
 obj-y += main.o
 obj-y += cat_scheduler.o
+obj-y += static_prio_sched.o
+obj-y += edf_sched.o
 
 #处理要编译的文件
 OBJ_TARGET_ORIG = $(patsubst %,$(OBJ_DIR)/%,$(obj-y))
@@ -46,7 +50,7 @@ all: $(OUT_BIN)
 
 ifeq ($(HOST_OS), Windows)
 $(OUT_BIN): $(BIN_DIR) $(OBJ_TARGET)
-	$(LD) $(CLINK_FLAGS) -o $(BIN_DIR)\\$@ $(OBJ_TARGET)
+	$(LD) $(CLINK_FLAGS) -Wl,-Map,$(BIN_DIR)\\$(OUT_MAP) -o $(BIN_DIR)\\$@ $(OBJ_TARGET)
 
 $(BIN_DIR):
 	$(MK_DIR) $(OUT_DIR)
@@ -63,7 +67,7 @@ dbg: $(BIN_DIR)\\$(OUT_BIN)
 	gdb $(BIN_DIR)\\$(OUT_BIN)
 else
 $(OUT_BIN): $(BIN_DIR) $(OBJ_TARGET)
-	$(LD) $(CLINK_FLAGS) -o $(BIN_DIR)/$@ $(OBJ_TARGET)
+	$(LD) $(CLINK_FLAGS) -Wl,-Map,$(BIN_DIR)/$(OUT_MAP) -o $(BIN_DIR)/$@ $(OBJ_TARGET)
 
 $(BIN_DIR):
 	$(MK_DIR) $(OUT_DIR)

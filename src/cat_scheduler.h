@@ -20,13 +20,27 @@
 #include "catos_config.h"
 
 #include "cat_task.h"
+#include "cat_section.h"
 
 #include <stdio.h>
 #define CAT_SYS_PRINTF(_fmt, ...) \
         printf((const char *)_fmt, ##__VA_ARGS__)
 
+/* 声明调度器 */
+#define CAT_SCHEDULER_DECLARE(_name) \
+    const cat_scheduler_t \
+    cat_scheduler_##_name SECTION("cat_scheduler")
+
 /* 调度策略 */
-#define SCHED_STRATEGY_STATIC_PRIO  0               /**< 固定优先级调度 */
+#define CAT_SCHED_STRATEGY_STATIC_PRIO  0               /**< 固定优先级调度 */
+#define CAT_SCHED_STRATEGY_EDF          1               /**< 最早截止时间优先调度 */
+
+/* 调度器优先级 */
+#define CAT_SCHEDULER_PRIO_HIGHEST      (0x01)          /**< 最高调度器优先级 */
+#define CAT_SCHEDULER_PRIO_LOWEST       (0xfe)          /**< 最低调度器优先级 */
+
+#define CAT_SCHEDULER_PRIO_STATIC_PRIO  (0xfe)          /**< 固定优先级调度器优先级 */
+#define CAT_SCHEDULER_PRIO_EDF          (0xfd)          /**< EDF调度器优先级 */
 
 typedef void (*cat_scheduler_init_func)(void);
 typedef void (*cat_scheduler_task_create_static_func)(void *task_config);
@@ -36,7 +50,7 @@ typedef void (*cat_scheduler_sched_func)(void);
 
 typedef void (*cat_scheduler_task_rdy_func)(struct _cat_task_t *task);
 typedef void (*cat_scheduler_task_unrdy_func)(struct _cat_task_t *task);
-typedef void (*cat_scheduler_task_delay_func)(cat_uint32_t tick);
+typedef void (*cat_scheduler_task_delay_func)(struct _cat_task_t *task, cat_uint32_t tick);
 typedef void (*cat_scheduler_task_delay_wakeup_func)(struct _cat_task_t *task);
 typedef void (*cat_scheduler_task_suspend_func)(struct _cat_task_t *task);
 typedef void (*cat_scheduler_task_suspend_wakeup_func)(struct _cat_task_t *task);
@@ -46,8 +60,10 @@ struct _cat_scheduler_t
 {
     cat_uint8_t                                 strategy;               /* 调度策略 */
     cat_uint8_t                                 scheduler_prio;         /* 调度器优先级 */
+    cat_uint8_t                                 reserve1;               /* 保留 */
     cat_uint8_t                                 reserve2;               /* 保留 */
-    cat_uint8_t                                 reserve3;               /* 保留 */
+
+    cat_uint8_t                                *scheduler_name;         /* 调度器名称 */
 
     cat_scheduler_init_func                     scheduler_init;         /* 初始化调度器 */
     cat_scheduler_task_create_static_func       task_create_static;     /* 静态创建任务(预分配资源) */
@@ -62,22 +78,13 @@ struct _cat_scheduler_t
     cat_scheduler_task_suspend_func             task_suspend;           /* 挂起任务 */
     cat_scheduler_task_suspend_wakeup_func      task_suspend_wakeup;    /* 从挂起唤醒 */
 
-    void                                       *private_data;           /* 调度器私有数据 */
+    /* 52 bytes */
+    cat_uint32_t                                reserve3;
+    cat_uint32_t                                reserve4;
+    cat_uint32_t                                reserve5;
 };
 
-/**
- * @brief 注册调度器
- * 
- * @param  scheduler        调度器结构体指针
- */
-void cat_scheduler_register(cat_scheduler_t *scheduler);
-/**
- * @brief 根据策略获取调度器
- * 
- * @param  strategy         调度策略
- * @return cat_scheduler_t* 调度器结构体指针
- */
-cat_scheduler_t *cat_scheduler_get_by_strategy(cat_uint8_t strategy);
+void print_scheduler(void);
 
 /**
  * @brief 初始化所有调度器
@@ -120,7 +127,7 @@ void cat_scheduler_task_unrdy(struct _cat_task_t *task);
  * 
  * @param  tick             要等待的 tick 数
  */
-void cat_scheduler_task_delay(cat_uint32_t tick);
+void cat_scheduler_task_delay(struct _cat_task_t *task, cat_uint32_t tick);
 /**
  * @brief 将任务从等待队列取出并就绪
  * 
