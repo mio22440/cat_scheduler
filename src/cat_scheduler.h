@@ -82,6 +82,10 @@ struct _cat_scheduler_t
     cat_uint32_t                                reserve3;
     cat_uint32_t                                reserve4;
     cat_uint32_t                                reserve5;
+
+#ifndef _WIN32
+    cat_uint32_t                                reserve6[2];
+#endif
 };
 
 void print_scheduler(void);

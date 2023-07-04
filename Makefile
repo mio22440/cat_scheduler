@@ -1,6 +1,6 @@
 
 #编译使用的平台 Windows Linux
-HOST_OS = Windows
+# HOST_OS = Windows
 
 #相关配置
 ifeq ($(HOST_OS), Windows)
@@ -12,16 +12,30 @@ ifeq ($(HOST_OS), Windows)
 	MK_DIR 	= mkdir
 	RM_DIR 	= rmdir /s /q
 
+	LINK_SCRIPT = link.ld
+
 	OUT_BIN = scheduler.exe
 
 	CINCLUDE_FILE_FLAG = -Iinclude
 else
+	CC  	= gcc
+	LD  	= gcc
+	DBG		= gdb
 
+	RM 		= del
+	MK_DIR 	= mkdir
+	RM_DIR 	= rm -rf
+
+	LINK_SCRIPT = link_linux.ld
+
+	OUT_BIN = scheduler
+
+	CINCLUDE_FILE_FLAG = -Iinclude
 endif
 
 OUT_MAP = scheduler.map
 
-CLINK_FLAGS += -g -ffunction-sections -fdata-sections -Wl,-T "link.ld"
+CLINK_FLAGS += -g -ffunction-sections -fdata-sections -Wl,-T "$(LINK_SCRIPT)"
 CFLAGS		+= -g -ffunction-sections -fdata-sections -O0
 
 #不需要处理的目录路径
@@ -44,6 +58,10 @@ ifeq ($(HOST_OS), Windows)
 OBJ_DIR = $(subst /,\\,$(OBJ_DIR_ORIG))
 BIN_DIR = $(subst /,\\,$(BIN_DIR_ORIG))
 OBJ_TARGET = $(subst /,\\,$(OBJ_TARGET_ORIG))
+else
+OBJ_DIR = $(OBJ_DIR_ORIG)
+BIN_DIR = $(BIN_DIR_ORIG)
+OBJ_TARGET = $(OBJ_TARGET_ORIG)
 endif
 
 all: $(OUT_BIN)
@@ -76,6 +94,12 @@ $(BIN_DIR):
 
 $(OBJ_DIR)/%.o: $(SRC_DIR)/%.c
 	$(CC) $(CINCLUDE_FILE_FLAG) $(CFLAGS) -o $@ -c $<
+
+run: $(BIN_DIR)/$(OUT_BIN)
+	@$(BIN_DIR)/$(OUT_BIN)
+
+dbg: $(BIN_DIR)/$(OUT_BIN)
+	gdb $(BIN_DIR)/$(OUT_BIN)
 endif
 
 
