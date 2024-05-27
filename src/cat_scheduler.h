@@ -55,21 +55,27 @@ typedef void (*cat_scheduler_task_delay_wakeup_func)(struct _cat_task_t *task);
 typedef void (*cat_scheduler_task_suspend_func)(struct _cat_task_t *task);
 typedef void (*cat_scheduler_task_suspend_wakeup_func)(struct _cat_task_t *task);
 
+#define CPU_64BIT
 typedef struct _cat_scheduler_t cat_scheduler_t;
 struct _cat_scheduler_t
 {
+    /* 32bit  64bit */
     cat_uint8_t                                 strategy;               /* 调度策略 */
     cat_uint8_t                                 scheduler_prio;         /* 调度器优先级 */
     cat_uint8_t                                 reserve1;               /* 保留 */
     cat_uint8_t                                 reserve2;               /* 保留 */
-
+    /* 4      4*/
+    
+    /* 0 gap  8*/
     cat_uint8_t                                *scheduler_name;         /* 调度器名称 */
+    /* 8      16*/
 
     cat_scheduler_init_func                     scheduler_init;         /* 初始化调度器 */
     cat_scheduler_task_create_static_func       task_create_static;     /* 静态创建任务(预分配资源) */
     cat_scheduler_deal_in_tick_func             deal_in_tick;           /* 每个tick调用一次 */
     cat_scheduler_has_task_rdy_func             has_task_rdy;           /* 有任务就绪可以调度 */
     cat_scheduler_sched_func                    schedule;               /* 进行调度 */
+    /* 28     56*/
 
     cat_scheduler_task_rdy_func                 task_rdy;               /* 将任务放入就绪队列 */
     cat_scheduler_task_unrdy_func               task_unrdy;             /* 将任务从就绪队列取出 */
@@ -77,14 +83,17 @@ struct _cat_scheduler_t
     cat_scheduler_task_delay_wakeup_func        task_delay_wakeup;      /* 从等待唤醒 */
     cat_scheduler_task_suspend_func             task_suspend;           /* 挂起任务 */
     cat_scheduler_task_suspend_wakeup_func      task_suspend_wakeup;    /* 从挂起唤醒 */
+    /* 52     104*/
 
-    /* 52 bytes */
     cat_uint32_t                                reserve3;
     cat_uint32_t                                reserve4;
     cat_uint32_t                                reserve5;
-
-#ifndef _WIN32
-    cat_uint32_t                                reserve6[2];
+    /* 64     116*/
+#ifdef CPU_64BIT
+    cat_uint32_t                                reserve6;
+    cat_uint32_t                                reserve7;
+    cat_uint32_t                                reserve8;
+    /*        128*/
 #endif
 };
 

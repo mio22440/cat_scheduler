@@ -8,14 +8,15 @@
             "name": "(gdb) Launch",
             "type": "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/output/bin/scheduler.exe",
+            "program": "${workspaceFolder}/output/bin/main.exe",
             "args": [],
             "stopAtEntry": false,
             "cwd": "${fileDirname}",
             "environment": [],
             "externalConsole": true,
             "MIMode": "gdb",
-            "miDebuggerPath": "D:\\softwares\\MINGW\\bin\\gdb.exe",
+            // "miDebuggerPath": "D:\\softwares\\MINGW\\bin\\gdb.exe",
+            "miDebuggerPath": "D:\\MINGW\\x86_64_810_win32_seh\\mingw64\\bin\\gdb.exe",
             "setupCommands": [
                 {
                     "description": "Enable pretty-printing for gdb",
@@ -28,7 +29,7 @@
                     "ignoreFailures": true
                 }
             ],
-            "preLaunchTask": "makefile build"
+            // "preLaunchTask": "makefile build"
         }
     ]
 }

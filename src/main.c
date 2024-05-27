@@ -2,10 +2,12 @@
 #include "cat_scheduler.h"
 
 struct _cat_task_t task;
-
+IMPORT_SECTION(cat_scheduler_sec);
 int main(void)
 {
     printf("sizeof(scheduler_t)=%d\r\n", sizeof(cat_scheduler_t));
+
+    printf("0x%x\r\n", SECTION_START(cat_scheduler_sec));
 
     print_scheduler();
 

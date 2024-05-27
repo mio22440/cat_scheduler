@@ -16,26 +16,14 @@
 #include "cat_scheduler.h"
 #include "cat_error.h"
 
-#ifndef _WIN32
-IMPORT_SECTION(cat_scheduler)
-#else
-const cat_scheduler_t cat_scheduler_start SECTION("cat_scheduler_sec_start");
-const cat_scheduler_t cat_scheduler_end   SECTION("cat_scheduler_sec_end");
-#endif
+IMPORT_SECTION(cat_scheduler_sec)
 
-
-#ifndef _WIN32
 /* 遍历调度器列表 */
 #define CAT_FOREACH_SCHEDULER(_temp) \
-    for(_temp =  (cat_scheduler_t*)SECTION_START(cat_scheduler); \
-        _temp != (cat_scheduler_t*)SECTION_END(cat_scheduler); \
+    for(_temp =  (cat_scheduler_t*)SECTION_START(cat_scheduler_sec); \
+        _temp != (cat_scheduler_t*)SECTION_END(cat_scheduler_sec); \
         _temp ++)
-#else
-#define CAT_FOREACH_SCHEDULER(_temp) \
-    for(_temp =  (cat_scheduler_t*)(&cat_scheduler_start)+1; \
-        _temp != (cat_scheduler_t*)(&cat_scheduler_end); \
-        _temp ++)
-#endif
+
 
 void print_scheduler(void)
 {
@@ -138,8 +126,8 @@ void cat_scheduler_schedule(void)
 
     highest_prio_scheduler->schedule();
 
-    /* 不会到达这里 */
-    while(1);
+    /* 实际使用中不会到达这里 */
+    // while(1);
 }
 
 
